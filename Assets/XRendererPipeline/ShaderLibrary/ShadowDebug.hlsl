@@ -32,8 +32,9 @@ ShadowDebugVaryings ShadowDebugVertex(ShadowDebugAttributes input)
     return output;
 }
 
-half4 ShadowDebugFragment(ShadowDebugVaryings input) : SV_Target
+half4 ShadowDebugFragment(ShadowDebugVaryings input, out half4 mask :SV_TARGET1 )  : SV_TARGET0
 {
+    mask = 1;
     float3 shadowUVD = WorldToShadowMapPos(input.positionWS);
     half d = DebugShadowResolution(shadowUVD.xy);
     return half4(d,0,0,0.2);

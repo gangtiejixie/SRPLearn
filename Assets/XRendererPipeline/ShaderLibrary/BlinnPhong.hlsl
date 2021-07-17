@@ -27,7 +27,7 @@ float BlinnPhongSpecular(float3 viewDir,float3 normal,float3 lightDir,float shin
 
 //漫反射 + 高光
 half4 BlinnPhong(float3 lightDir,BlinnPhongGemo gemo,BlinnPhongProperty property){
-    half3 diffuse = LambertDiffuse(gemo.normal,lightDir) * property.diffuseColor;
+    half3 diffuse =property.diffuseColor ;// LambertDiffuse(gemo.normal,lightDir) * property.diffuseColor;
     half3 specular = BlinnPhongSpecular(gemo.viewDir,gemo.normal,lightDir,property.shininess) * property.specularColor;
     return half4(diffuse + specular,1);
 }

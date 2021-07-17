@@ -12,6 +12,8 @@ float4 _XCascadeCullingSpheres[MAX_CASCADESHADOW_COUNT];
 
 CBUFFER_END
 
+sampler2D _XMainShadowMapMask;
+
 
 
 #if X_SHADOW_PCF

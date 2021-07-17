@@ -21,7 +21,7 @@ namespace  SRPLearn
     public class ShadowSetting 
     {
         [SerializeField]
-        [Range(10,500)]
+        [Range(1,10)]
         [Tooltip("最远阴影距离")]
         private float _maxShadowDistance = 100;  
 

@@ -51,8 +51,9 @@ ShadowCasterVaryings ShadowCasterVertex(ShadowCasterAttributes input)
     return output;
 }
 
-half4 ShadowCasterFragment(ShadowCasterVaryings input) : SV_Target
+half4 ShadowCasterFragment(ShadowCasterVaryings input, out half4 mask :SV_TARGET1 ) : SV_TARGET0
 {
+    mask = _ShadowMask;
     return 0;
 }
 

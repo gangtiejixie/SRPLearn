@@ -7,17 +7,17 @@
 
 struct Attributes
 {
-    float4 positionOS   : POSITION;
-    float2 uv           : TEXCOORD0;
-    float3 normalOS     : NORMAL;
+    float4 positionOS: POSITION;
+    float2 uv: TEXCOORD0;
+    float3 normalOS: NORMAL;
 };
 
 struct Varyings
 {
-    float2 uv           : TEXCOORD0;
-    float4 positionCS   : SV_POSITION;
-    float3 normalWS    : TEXCOORD1;
-    float3 positionWS   : TEXCOORD2;
+    float2 uv: TEXCOORD0;
+    float4 positionCS: SV_POSITION;
+    float3 normalWS: TEXCOORD1;
+    float3 positionWS: TEXCOORD2;
 };
 UNITY_DECLARE_TEX2D(_MainTex);
 
@@ -34,14 +34,15 @@ Varyings PassVertex(Attributes input)
     Varyings output;
     output.positionCS = UnityObjectToClipPos(input.positionOS);
     output.uv = TRANSFORM_TEX(input.uv, _MainTex);
-    output.normalWS = mul(unity_ObjectToWorld, float4( input.normalOS, 0.0 )).xyz;
-    output.positionWS = mul(unity_ObjectToWorld,input.positionOS).xyz;
+    output.normalWS = mul(unity_ObjectToWorld, float4(input.normalOS, 0.0)).xyz;
+    output.positionWS = mul(unity_ObjectToWorld, input.positionOS).xyz;
     return output;
 }
 
 
-half4 BlinnPhongFinal(Varyings input){
-    half4 diffuseColor = UNITY_SAMPLE_TEX2D(_MainTex,input.uv);
+half4 BlinnPhongFinal(Varyings input)
+{
+    half4 diffuseColor = UNITY_SAMPLE_TEX2D(_MainTex, input.uv);
     float3 positionWS = input.positionWS;
     float3 normalWS = normalize(input.normalWS);
 
@@ -59,15 +60,22 @@ half4 BlinnPhongFinal(Varyings input){
 
     //计算主光源(平行光)BlinnPhong光照
     XDirLight mainLight = GetMainLight();
-    half4 mainLightColor = BlinnPhong(mainLight.direction,gemo,property);
+    half4 mainLightColor = BlinnPhong(mainLight.direction, gemo, property);
     mainLightColor *= mainLight.color;
 
-    //计算主光源(平行光)阴影
-    float shadowAtten = GetMainLightShadowAtten(positionWS,normalWS);
-    mainLightColor *= shadowAtten;
+    //    return tex2D(_XMainShadowMapMask, input.uv);
 
+    //计算主光源(平行光)阴影
+    float shadowAtten = GetMainLightShadowAtten(positionWS, normalWS);
+#if 1   
+    half4 LambertMask = max(0, dot(normalWS, mainLight.direction));
+    shadowAtten = lerp(1, shadowAtten, LambertMask);
+    mainLightColor = lerp(_ShadowColor * mainLightColor, mainLightColor, shadowAtten);
+#else
+  mainLightColor *= shadowAtten;
+#endif
     //计算点光源的BlinnPhong光照
-    half4 pointLightsColor = BlinnPhongPointLights(gemo,property);
+    half4 pointLightsColor = BlinnPhongPointLights(gemo, property);
 
     half4 color = _XAmbientColor + mainLightColor + pointLightsColor;
     color.a = 1;
@@ -75,12 +83,12 @@ half4 BlinnPhongFinal(Varyings input){
 }
 
 
-half4 PassFragment(Varyings input) : SV_Target
+half4 PassFragment(Varyings input): SV_Target
 {
     return BlinnPhongFinal(input);
 }
 
-half4 PassFragmentTransparent(Varyings input):SV_Target
+half4 PassFragmentTransparent(Varyings input): SV_Target
 {
     half4 color = BlinnPhongFinal(input);
     color.a = _Color.a;

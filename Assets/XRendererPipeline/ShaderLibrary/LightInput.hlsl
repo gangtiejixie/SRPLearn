@@ -11,6 +11,7 @@
 #define MAX_OTHER_LIGHT_PER_OBJECT 8
 
 CBUFFER_START(XLighting)
+
 //环境光
 half4 _XAmbientColor;
 //主灯光方向
@@ -25,6 +26,8 @@ float4x4 _XMainLightMatrixWorldToShadowMap;
 float4 _XOtherLightPositionAndRanges[MAX_OTHER_VISIBLE_LIGHT_COUNT];
 //非主光源的颜色
 half4 _XOtherLightColors[MAX_OTHER_VISIBLE_LIGHT_COUNT];
+half4 _ShadowColor;
+half _ShadowMask;
 
 CBUFFER_END
 
