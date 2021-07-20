@@ -7,21 +7,40 @@
 
 #if X_SHADOW_PCF
 
-//1 tap PCF,直接由硬件支持
-float SampleShadowPCF(float3 uvd)
-{
-    half4 mask = tex2D(_XMainShadowMapMask, uvd.xy);
-    return _XMainShadowMap.SampleCmpLevelZero(sampler_XMainShadowMap, uvd.xy, uvd.z);
-}
+
 
 
 //1 tap PCF,直接由硬件支持
 float SampleShadowPCF(float2 uv, float depth)
 {
+    // #if X_SHADOW_PCF
+    // Texture2D _XMainShadowMap;
+    // SamplerComparisonState sampler_XMainShadowMap;
+    return _XMainShadowMap.SampleCmpLevelZero(sampler_XMainShadowMap, uv, depth);
+    // #else
 
-    return _XMainShadowMap.SampleCmpLevelZero(sampler_XMainShadowMap, uv, depth) ;
+
+    //         float Tempdepth = _XMainShadowMap.Sample(sampler_XMainShadowMap_point_clamp, uv.xy);
+    // #if UNITY_REVERSED_Z
+    //     return step(depth, Tempdepth);
+    // #else
+        //     return step(Tempdepth, depth);
+    // #endif
+
+    // #endif
+
+
+
+
+    // return _XMainShadowMap.SampleCmpLevelZero(sampler_XMainShadowMap, uv, depth) ;
+
 }
 
+//1 tap PCF,直接由硬件支持
+float SampleShadowPCF(float3 uvd)
+{
+    return SampleShadowPCF(uvd.xy, uvd.z);
+}
 //一个3x3的TentFilter(函数形式为|1.5 - x|)，将4个格子分割。每个格子在TentFilter内部的面积代表了这个格子的权重。
 static float4 GetTent3Weights(float kernelOffset)
 {
@@ -197,7 +216,7 @@ float SampleShadowPCF5x5_9Tap(float3 uvd)
     half4 mask = 1 - tex2D(_XMainShadowMapMask, uvd.xy);
     half Shadow = dot(tapA, groupWeightsA) + dot(tapB, groupWeightsB) + dot(tapC, groupWeightsC);
 
-    return lerp(Shadow, 1, mask);
+    // return lerp(Shadow, 1, mask);
     // return 1-mask.r;
     return dot(tapA, groupWeightsA) + dot(tapB, groupWeightsB) + dot(tapC, groupWeightsC);
 }
@@ -217,7 +236,7 @@ float SampleShadowPCF3x3_4Tap_Fast(float3 uvd)
     half4 mask = 1 - tex2D(_XMainShadowMapMask, uvd.xy);
     half Shadow = dot(result, 0.25);
 
-    return lerp(Shadow, 1, mask);
+    // return lerp(Shadow, 1, mask);
 
     
     return dot(result, 0.25);

@@ -66,13 +66,15 @@ half4 BlinnPhongFinal(Varyings input)
     //    return tex2D(_XMainShadowMapMask, input.uv);
 
     //计算主光源(平行光)阴影
-    float shadowAtten = GetMainLightShadowAtten(positionWS, normalWS);
-#if 1   
+    float3 pShadowAtten = GetMainLightShadowAtten(positionWS, normalWS);
+    return float4(pShadowAtten,1);
+    float shadowAtten = pShadowAtten.x;
+#if 1
     half4 LambertMask = max(0, dot(normalWS, mainLight.direction));
     shadowAtten = lerp(1, shadowAtten, LambertMask);
     mainLightColor = lerp(_ShadowColor * mainLightColor, mainLightColor, shadowAtten);
 #else
-  mainLightColor *= shadowAtten;
+    mainLightColor *= shadowAtten;
 #endif
     //计算点光源的BlinnPhong光照
     half4 pointLightsColor = BlinnPhongPointLights(gemo, property);

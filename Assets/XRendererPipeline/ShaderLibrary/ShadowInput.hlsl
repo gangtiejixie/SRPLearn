@@ -6,7 +6,7 @@
 CBUFFER_START(XShadow)
 
 //主灯光 世界空间->投影空间变换矩阵
-float4x4 _XWorldToMainLightCascadeShadowMapSpaceMatrices[MAX_CASCADESHADOW_COUNT];
+float4x4 _XWorldToMainLightCascadeShadowMapSpaceMatrices;
 
 float4 _XCascadeCullingSpheres[MAX_CASCADESHADOW_COUNT];
 
@@ -21,7 +21,7 @@ Texture2D _XMainShadowMap;
 SamplerComparisonState sampler_XMainShadowMap;
 half4 _ShadowAAParams; //x is PCF tap count, current support 1 & 4
 #else
-Texture2D _XMainShadowMap;
+Texture2D_float _XMainShadowMap;
 SamplerState sampler_XMainShadowMap_point_clamp;
 #endif
 

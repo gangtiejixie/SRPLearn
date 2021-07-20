@@ -14,14 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _srpBatcher: 1
   _shadowSetting:
-    _maxShadowDistance: 2
+    _maxShadowDistance: 1.99
     _shadowCascadeCount: 1
     _cascadeRatio1: 1
     _cascadeRatio2: 1
     _cascadeRatio3: 1
     _cascadeRatio4: 1
-    _shadowBiasType: 1
-    _shadowAAType: 4
+    _shadowBiasType: 0
+    _shadowAAType: 2
     _debugShadowResolution: 0
   _antiAlias:
     antiAliasType: 3
