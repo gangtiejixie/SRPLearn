@@ -35,17 +35,16 @@ namespace SRPLearn
                 case LightShadowResolution.Low:
                     return 256;
             }
-            return 256;
+            return 4096;
         }
 
         private void ClearAndActiveShadowMapTexture(ScriptableRenderContext context, int shadowMapResolution)
         {
             _commandBuffer.Clear();
             //设置渲染目标
-            //_commandBuffer.SetRenderTarget(_shadowMapHandler.renderTargetIdentifier, _shadowMapHandler.renderTargetIdentifier);
-
-            RenderTargetIdentifier[] renderTargetIdentifiers = new RenderTargetIdentifier[] { _shadowMapHandler.renderTargetIdentifier, _shadowMapHandler.renderTargetMaskIdentifier };
-            _commandBuffer.SetRenderTarget(renderTargetIdentifiers, _shadowMapHandler.renderTargetIdentifier);
+            RenderTargetIdentifier[] renderTargetIdentifiers = new RenderTargetIdentifier[] { _shadowMapHandler.renderTargetMaskIdentifier };
+            //_commandBuffer.SetRenderTarget(_renderTargetIdentifiers,shadowMapHandler.renderTargetMaskIdentifier)/*;*/
+            _commandBuffer.SetRenderTarget(renderTargetIdentifiers, _shadowMapHandler.renderTargetIdentifier, 0, CubemapFace.Unknown, 1);
 
 
             _commandBuffer.SetViewport(new Rect(0, 0, shadowMapResolution, shadowMapResolution));
@@ -61,14 +60,12 @@ namespace SRPLearn
             _commandBuffer.Clear();
             _commandBuffer.SetViewport(new Rect(offsetInAtlas.x, offsetInAtlas.y, resolution, resolution));
             //设置view&proj矩阵
-            Debug.Log("VP:\n" + (matrixView * matrixProj).ToString());
+            //Debug.Log("VP:\n" + (matrixView * matrixProj).ToString());
             _commandBuffer.SetViewProjectionMatrices(matrixView, matrixProj);
 
-            if (shadowSetting.biasType == ShadowBiasType.CasterVertexBias)
-            {
-                var shadowBiasData = this.CalculateShadowBias(resolution, ref matrixProj, ref lightData, ref shadowSetting);
-                _commandBuffer.SetGlobalVector(ShaderProperties.ShadowBias, new Vector4(shadowBiasData.depthBias, shadowBiasData.normalBias));
-            }
+            var shadowBiasData = this.CalculateShadowBias(resolution, ref matrixProj, ref lightData, ref shadowSetting);
+            _commandBuffer.SetGlobalVector(ShaderProperties.ShadowBias, new Vector4(shadowBiasData.depthBias, shadowBiasData.normalBias));
+
             context.ExecuteCommandBuffer(_commandBuffer);
         }
 
@@ -104,12 +101,6 @@ namespace SRPLearn
             };
         }
 
-        private void ConfigShadowBiasKeywords(CommandBuffer commandBuffer, ref ShadowSetting shadowSetting)
-        {
-            Utils.SetGlobalShaderKeyword(_commandBuffer, ShaderKeywords.ShadowBiasCasterVertex, shadowSetting.biasType == ShadowBiasType.CasterVertexBias);
-            Utils.SetGlobalShaderKeyword(_commandBuffer, ShaderKeywords.ShadowBiasReceiverPixel, shadowSetting.biasType == ShadowBiasType.ReceiverPixelBias);
-        }
-
         /// <summary>
         /// 设置ShadowAA的相关参数，该设置是PerCamera的
         /// </summary>
@@ -124,155 +115,12 @@ namespace SRPLearn
             }
         }
 
-        private Vector3 lightDirection;
-        private int nearPointIndex;
-        private Matrix4x4 lightPosMatrix;
-
-        private Vector3[] points = new Vector3[8];
-
-
-
-        private Matrix4x4 lightMatrix, viewMatrix, projectionMatrix;
-
-        Vector3 NXNYNZ = new Vector3(-1.0f, -1.0f, -1.0f);
-        Vector3 XNYNZ = new Vector3(1.0f, -1.0f, -1.0f);
-        Vector3 NXNYZ = new Vector3(-1.0f, -1.0f, 1.0f);
-        Vector3 XNYZ = new Vector3(1.0f, -1.0f, 1.0f);
-        Vector3 NXYNZ = new Vector3(-1.0f, 1.0f, -1.0f);
-        Vector3 XYNZ = new Vector3(1.0f, 1.0f, -1.0f);
-        Vector3 NXYZ = new Vector3(-1.0f, 1.0f, 1.0f);
-        Vector3 XYZ = new Vector3(1.0f, 1.0f, 1.0f);
-        private void CalcMatrixVP()
-        {
-            #region AABB
-
-            Vector3 min = Vector3.positiveInfinity, max = Vector3.negativeInfinity;
-
-            //foreach (var item in mainRoleRendererList)
-            //{
-            //    if (item.renderer == null)
-            //    {
-            //        continue;
-            //    }
-
-            //    Bounds bounds = item.renderer.bounds;
-
-            //    Vector3 bmin = bounds.min;
-            //    if (min.x > bmin.x)
-            //    {
-            //        min.x = bmin.x;
-            //    }
-
-            //    if (min.y > bmin.y)
-            //    {
-            //        min.y = bmin.y;
-            //    }
-
-            //    if (min.z > bmin.z)
-            //    {
-            //        min.z = bmin.z;
-            //    }
-
-            //    Vector3 bmax = bounds.max;
-            //    if (max.x < bmax.x)
-            //    {
-            //        max.x = bmax.x;
-            //    }
-
-            //    if (max.y < bmax.y)
-            //    {
-            //        max.y = bmax.y;
-            //    }
-
-            //    if (max.z < bmax.z)
-            //    {
-            //        max.z = bmax.z;
-            //    }
-            //}
-
-            Vector3 center = (max + min) / 2;
-
-            Vector3 halfSize = (max - min) / 2;
-
-            points[0] = center + Vector3.Scale(halfSize, NXNYNZ);
-            points[1] = center + Vector3.Scale(halfSize, XNYNZ);
-            points[2] = center + Vector3.Scale(halfSize, NXNYZ);
-            points[3] = center + Vector3.Scale(halfSize, XNYZ);
-            points[4] = center + Vector3.Scale(halfSize, NXYNZ);
-            points[5] = center + Vector3.Scale(halfSize, XYNZ);
-            points[6] = center + Vector3.Scale(halfSize, NXYZ);
-            points[7] = center + Vector3.Scale(halfSize, XYZ);
-
-            #endregion
-
-            #region closer plane point
-
-            Vector3 nearPoint = points[nearPointIndex];
-
-            var dd = Vector3.Dot(nearPoint - center, lightDirection);
-            Vector3 closerCenterPoint = dd * lightDirection + center;
-
-            float maxD = 0;
-
-            for (int i = 0; i < 8; ++i)
-            {
-                var d = Vector3.Dot(closerCenterPoint - points[i], lightDirection);
-                points[i] += d * lightDirection;
-                if (d > maxD)
-                {
-                    maxD = d;
-                }
-            }
-
-            #endregion
-
-            #region max radius
-
-            float maxRadius = 0;
-
-            Vector4 tempV4 = new Vector4(closerCenterPoint.x, closerCenterPoint.y, closerCenterPoint.z, 1.0f);
-
-            var tempCenter = lightPosMatrix * tempV4;
-
-            foreach (var item in points)
-            {
-                tempV4.x = item.x;
-                tempV4.y = item.y;
-                tempV4.z = item.z;
-                var tempPos = lightPosMatrix * tempV4;
-                float x = Mathf.Abs(tempPos.y - tempCenter.y);
-                float y = Mathf.Abs(tempPos.z - tempCenter.z);
-                //用Unity的 Mathf.max(a,b,c)会触发GC
-                x = x > y ? x : y;
-                maxRadius = maxRadius > x ? maxRadius : x;
-            }
-
-            #endregion
-
-            #region VP
-
-            projectionMatrix = Matrix4x4.Ortho(-maxRadius, maxRadius, -maxRadius, maxRadius, 0.01f, maxD);
-
-            viewMatrix = Matrix4x4.LookAt(closerCenterPoint, closerCenterPoint - lightDirection, Vector3.up).inverse;
-
-            //左右手坐标互换
-            viewMatrix.m20 = -viewMatrix.m20;
-            viewMatrix.m21 = -viewMatrix.m21;
-            viewMatrix.m22 = -viewMatrix.m22;
-            viewMatrix.m23 = -viewMatrix.m23;
-            lightMatrix = projectionMatrix * viewMatrix;
-
-            #endregion
-        }
-
-
-
-
 
         private void ConfigPerCameraShadowSetting(ScriptableRenderContext context, ref ShadowSetting shadowSetting)
         {
             _commandBuffer.Clear();
-            this.ConfigShadowBiasKeywords(_commandBuffer, ref shadowSetting);
+            //this.ConfigShadowBiasKeywords(_commandBuffer, ref shadowSetting);
+            Utils.SetGlobalShaderKeyword(_commandBuffer, ShaderKeywords.ShadowBiasCasterVertex, true);
             this.ConfigShadowAAParams(_commandBuffer, shadowSetting);
             context.ExecuteCommandBuffer(_commandBuffer);
         }
@@ -291,13 +139,13 @@ namespace SRPLearn
                 return;
             }
             //false表示该灯光对场景无影响
-            if (!cullingResults.GetShadowCasterBounds(lightData.mainLightIndex, out var lightBounds))
-            {
-                Shader.SetGlobalVector(ShaderProperties.ShadowParams, new Vector4(0, 0, 0, 0));
-                return;
-            }
+            //if (!cullingResults.GetShadowCasterBounds(lightData.mainLightIndex, out var lightBounds))
+            //{
+            //    Shader.SetGlobalVector(ShaderProperties.ShadowParams, new Vector4(0, 0, 0, 0));
+            //    return;
+            //}
 
-            var perPixelBias = ShadowUtils.IsPerPixelBias(shadowSetting.biasType);
+            //var perPixelBias = ShadowUtils.IsPerPixelBias(shadowSetting.biasType);
             this.ConfigPerCameraShadowSetting(context, ref shadowSetting);
 
             var mainLight = lightData.mainLight;
@@ -311,93 +159,34 @@ namespace SRPLearn
 
             this.ClearAndActiveShadowMapTexture(context, shadowMapResolution);
 
-            var cascadeAtlasGridSize = Mathf.CeilToInt(Mathf.Sqrt(shadowSetting.cascadeCount));
-            var cascadeResolution = shadowMapResolution / cascadeAtlasGridSize;
+            var cascadeResolution = shadowMapResolution;
 
-            var cascadeOffsetInAtlas = new Vector2(0, 0);
+            //计算当前级别的级联阴影在Atlas上的偏移位置
 
-            Vector4 cascadeBiasScales = Vector4.one;
+            //get light matrixView,matrixProj,shadowSplitData
+            cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(lightData.mainLightIndex, 0, 1, cascadeRatio, cascadeResolution, lightComp.shadowNearPlane, out var matrixView, out var matrixProj, out var shadowSplitData);
 
-            for (var i = 0; i < shadowSetting.cascadeCount; i++)
-            {
+            //设置Cascade相关参数
+            SetupShadowCascade(context, Vector2.zero, cascadeResolution, ref matrixView, ref matrixProj, ref lightData, ref shadowSetting);
 
-                var x = i % cascadeAtlasGridSize;
-                var y = i / cascadeAtlasGridSize;
-
-                //计算当前级别的级联阴影在Atlas上的偏移位置
-                var offsetInAtlas = new Vector2(x * cascadeResolution, y * cascadeResolution);
+            DrawingSettings drawingSettings = new DrawingSettings(new ShaderTagId("ShadowCaster"), new SortingSettings());
+            FilteringSettings filteringSettings = new FilteringSettings(RenderQueueRange.opaque);
 
 
-                //get light matrixView,matrixProj,shadowSplitData
-                cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives(lightData.mainLightIndex, i, shadowSetting.cascadeCount,
-                cascadeRatio, cascadeResolution, lightComp.shadowNearPlane, out var matrixView, out var matrixProj, out var shadowSplitData);
 
-                Debug.Log("matrixWorldToShadowMapSpace:\n" + matrixView.ToString());
-                //generate ShadowDrawingSettings
+            context.DrawRenderers(cullingResults, ref drawingSettings, ref filteringSettings);
 
-                CalcMatrixVP();
+            var cascadeOffsetAndScale = new Vector4(0, 0, 1, 1);
 
-
-                ShadowDrawingSettings shadowDrawSetting = new ShadowDrawingSettings(cullingResults, lightData.mainLightIndex);
-                shadowDrawSetting.splitData = shadowSplitData;
-
-                //设置Cascade相关参数
-                SetupShadowCascade(context, offsetInAtlas, cascadeResolution, ref matrixView, ref matrixProj, ref lightData, ref shadowSetting);
-
-                DrawingSettings drawingSettings = new DrawingSettings(new ShaderTagId("ShadowCaster"), new SortingSettings());
-                FilteringSettings filteringSettings = new FilteringSettings(RenderQueueRange.opaque);
-
-                context.DrawRenderers(cullingResults, ref drawingSettings, ref filteringSettings);
-
-                //绘制阴影
-                //context.DrawShadows(ref shadowDrawSetting);
-
-
-                //计算Cascade ShadowMap空间投影矩阵和包围圆
-                var cascadeOffsetAndScale = new Vector4(offsetInAtlas.x, offsetInAtlas.y, cascadeResolution, cascadeResolution) / shadowMapResolution;
-
-
-                var matrixWorldToShadowMapSpace = GetWorldToCascadeShadowMapSpaceMatrix(matrixProj, matrixView, cascadeOffsetAndScale);
-                _worldToCascadeShadowMapMatrices = matrixWorldToShadowMapSpace;
-
-                _cascadeCullingSpheres[i] = shadowSplitData.cullingSphere;
-
-
-                if (perPixelBias)
-                {
-                    var biasScale = this.CalculateBiasScale(cascadeResolution, ref matrixProj, ref lightData, ref shadowSetting);
-                    if (i == 0)
-                    {
-                        cascadeBiasScales.x = biasScale;
-                    }
-                    else if (i == 1)
-                    {
-                        cascadeBiasScales.y = biasScale;
-                    }
-                    else if (i == 2)
-                    {
-                        cascadeBiasScales.z = biasScale;
-                    }
-                    else
-                    {
-                        cascadeBiasScales.w = biasScale;
-                    }
-                }
-            }
+            _worldToCascadeShadowMapMatrices = GetWorldToCascadeShadowMapSpaceMatrix(matrixProj, matrixView, cascadeOffsetAndScale);
 
             //setup shader params
-            //Shader.SetGlobalMatrixArray(ShaderProperties.WorldToMainLightCascadeShadowMapSpaceMatrices, _worldToCascadeShadowMapMatrices);
             Shader.SetGlobalMatrix(ShaderProperties.WorldToMainLightCascadeShadowMapSpaceMatrices, _worldToCascadeShadowMapMatrices);
-            Shader.SetGlobalVectorArray(ShaderProperties.CascadeCullingSpheres, _cascadeCullingSpheres);
+
             //将阴影的一些数据传入Shader
-            Shader.SetGlobalVector(ShaderProperties.ShadowParams, new Vector4(lightComp.shadowBias, lightComp.shadowNormalBias, lightComp.shadowStrength, shadowSetting.cascadeCount));
+            Shader.SetGlobalVector(ShaderProperties.ShadowParams, new Vector4(lightComp.shadowBias, lightComp.shadowNormalBias, lightComp.shadowStrength, 0));
             Shader.SetGlobalVector(ShaderProperties.ShadowMapSize, new Vector4(1.0f / shadowMapResolution, 1.0f / shadowMapResolution, shadowMapResolution, shadowMapResolution));
 
-            if (perPixelBias)
-            {
-                Shader.SetGlobalVector(ShaderProperties.ShadowBias, new Vector4(lightComp.shadowBias, lightComp.shadowNormalBias));
-                Shader.SetGlobalVector(ShaderProperties.CascadeShadowBiasScale, cascadeBiasScales);
-            }
         }
 
         public class ShadowMapTextureHandler
@@ -437,9 +226,10 @@ namespace SRPLearn
 
                 if (!_shadowmapTexture)
                 {
-                    _shadowmapTexture = RenderTexture.GetTemporary(resolution, resolution, 16, RenderTextureFormat.Shadowmap);
+                    _shadowmapTexture = RenderTexture.GetTemporary(resolution, resolution, 32, RenderTextureFormat.Shadowmap);
                     _shadowmapTexture.name = "_XMainShadowMap";
-                    _shadowmapMaskTexture = RenderTexture.GetTemporary(resolution, resolution, 16, RenderTextureFormat.RGB565);
+                    _shadowmapMaskTexture = RenderTexture.GetTemporary(resolution, resolution, 32, RenderTextureFormat.ARGB32);
+                    _shadowmapMaskTexture.name = "_XMainShadowMapMask";
                     Shader.SetGlobalTexture(ShaderProperties.MainShadowMap, _shadowmapTexture);
                     Shader.SetGlobalTexture("_XMainShadowMapMask", _shadowmapMaskTexture);
                     _renderTargetIdentifier = new RenderTargetIdentifier(_shadowmapTexture);

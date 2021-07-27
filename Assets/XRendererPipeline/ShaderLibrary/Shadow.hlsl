@@ -37,6 +37,7 @@ float3 WorldToShadowMapPos(float3 positionWS, int cascadeIndex)
         float4 shadowMapPos = mul(worldToCascadeMatrix, float4(positionWS, 1));
         // return shadowMapPos.www;
         shadowMapPos /= shadowMapPos.w;
+        // shadowMapPos.xyz = shadowMapPos.xyz * 0.5 + 0.5;
         return shadowMapPos;
     }
     else
@@ -53,8 +54,8 @@ float3 WorldToShadowMapPos(float3 positionWS, int cascadeIndex)
 
 float3 WorldToShadowMapPos(float3 positionWS)
 {
-    int cascadeIndex = GetCascadeIndex(positionWS);
-    return WorldToShadowMapPos(positionWS, cascadeIndex);
+    // int cascadeIndex = GetCascadeIndex(positionWS);
+    return WorldToShadowMapPos(positionWS, 0);
 }
 
 
@@ -84,6 +85,7 @@ float SampleShadowStrength(float3 uvd)
     {
         atten = SampleShadowPCF(uvd);
     }
+    // return atten;
     return 1 - atten;
 #else
     // return 1;
@@ -104,6 +106,8 @@ float SampleShadowStrength(float3 uvd)
 ///检查世界坐标是否位于主灯光的阴影之中(1表示不在阴影中，小于1表示在阴影中,数值代表了阴影衰减)
 float3 GetMainLightShadowAtten(float3 positionWS, float3 normalWS)
 {
+
+    // return  _ShadowParams.z;
 #if _RECEIVE_SHADOWS_OFF
     return 1;
 #else
@@ -111,16 +115,25 @@ float3 GetMainLightShadowAtten(float3 positionWS, float3 normalWS)
     {
         return 1;
     }
-    int cascadeIndex = GetCascadeIndex(positionWS);
+    int cascadeIndex = 0;// GetCascadeIndex(positionWS);
 #if X_SHADOW_BIAS_RECEIVER_PIXEL
     positionWS = ApplyShadowBias(positionWS, normalWS, _XMainLightDirection, cascadeIndex);
 #endif
-// return positionWS;
+
+    float pdistance = distance(positionWS, _WorldSpaceCameraPos.xyz);
+    pdistance = saturate(step(pdistance, 3));
+    // return positionWS;
     float3 shadowMapPos = WorldToShadowMapPos(positionWS, cascadeIndex);
-    // return shadowMapPos;    
-    float shadowStrength = SampleShadowStrength(shadowMapPos);
-    // return shadowStrength;  
-    return  1-shadowStrength * _ShadowParams.z;
+    // return shadowMapPos;
+    // float4 TempdepthColor = tex2D(_XMainShadowMapMask, shadowMapPos.xy) ;
+    // float Tempdepth = DecodeFloatRG(TempdepthColor.ar);
+    // return Tempdepth ;
+    // return GetNDC(shadowMapPos.xy, Tempdepth).xyz;
+
+
+    float shadowStrength = SampleShadowStrength(shadowMapPos) * pdistance;
+    // return shadowStrength;
+    return 1 - shadowStrength * _ShadowParams.z;
 #endif
 }
 

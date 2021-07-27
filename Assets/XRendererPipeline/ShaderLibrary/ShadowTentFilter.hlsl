@@ -10,22 +10,54 @@
 
 
 
+
+
 //1 tap PCF,直接由硬件支持
 float SampleShadowPCF(float2 uv, float depth)
 {
     // #if X_SHADOW_PCF
     // Texture2D _XMainShadowMap;
     // SamplerComparisonState sampler_XMainShadowMap;
-    return _XMainShadowMap.SampleCmpLevelZero(sampler_XMainShadowMap, uv, depth);
+    float4 TempdepthColor = tex2D(_XMainShadowMapMask, uv) ;
+    // return 1 - TempdepthColor.b;
+    // float4 TempdepthColor = tex2Dlod(_XMainShadowMapMask, half4(uv, 0, 0));
+    float Tempdepth = DecodeFloatRG(TempdepthColor.ra);
+    float Tempdepth1 = DecodeFloatRG(TempdepthColor.gb);
+    // return 1 - Tempdepth;
+    // return Tempdepth1;
+    // return TempdepthColor.b ;
+    float Tempdepth2 = _XMainShadowMap.Sample(sampler_XMainShadowMap_point_clamp, uv).r;
+    float PCFShadow = _XMainShadowMap.SampleCmpLevelZero(sampler_XMainShadowMap, uv, depth);
+    //  return TempdepthColor.b;
+    return PCFShadow ;
+    float selfShadowmask = 0;
+#if UNITY_REVERSED_Z
+    selfShadowmask = 1 - step(depth, Tempdepth2) ;
+#else
+    selfShadowmask = 1 - step(Tempdepth2, depth) ;
+#endif
+    return selfShadowmask ;
+
+
+    if (Tempdepth2 > depth)
+    {
+        return 0;
+    }
+    return 1;
+    // GetNDC(uv, Tempdepth);
+    
+
     // #else
 
+    // return PCFShadow;
 
+    
     //         float Tempdepth = _XMainShadowMap.Sample(sampler_XMainShadowMap_point_clamp, uv.xy);
-    // #if UNITY_REVERSED_Z
-    //     return step(depth, Tempdepth);
-    // #else
-        //     return step(Tempdepth, depth);
-    // #endif
+#if UNITY_REVERSED_Z
+    return 1 - step(depth, Tempdepth1)  ;
+#else
+    return 1 - step(Tempdepth1, depth)   ;
+#endif
 
     // #endif
 
@@ -233,8 +265,8 @@ float SampleShadowPCF3x3_4Tap_Fast(float3 uvd)
     result.z = SampleShadowPCF(float3(uvd.x - offsetX, uvd.y + offsetY, uvd.z));
     result.w = SampleShadowPCF(float3(uvd.x + offsetX, uvd.y + offsetY, uvd.z));
 
-    half4 mask = 1 - tex2D(_XMainShadowMapMask, uvd.xy);
-    half Shadow = dot(result, 0.25);
+    // half4 mask = 1 - tex2D(_XMainShadowMapMask, uvd.xy);
+    // half Shadow = dot(result, 0.25);
 
     // return lerp(Shadow, 1, mask);
 

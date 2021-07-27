@@ -10,7 +10,7 @@
         
         _ShadowMask ("_ShadowMask", Range(0, 1)) = 1
         // [Toggle(_TEST_OFF)] _TEST_OFF ("TEST", Float) = 0
-        
+        _RefValue ("_RefValue", Float) = 2
         [Toggle(_RECEIVE_SHADOWS_OFF)] _RECEIVE_SHADOWS_OFF ("Receive Shadows Off?", Float) = 0
     }
 
@@ -31,7 +31,12 @@
             Name "DEFAULT"
 
             Cull Back
-
+            Stencil
+            {
+                Ref 6
+                Comp LEqual
+                Pass  keep
+            }
             HLSLPROGRAM
 
             #pragma multi_compile _ X_SHADOW_BIAS_RECEIVER_PIXEL
@@ -53,9 +58,15 @@
 
             ZWrite On
             ZTest LEqual
+            // Blend One One
             // ColorMask 0
-            Cull Back
-
+            Cull  Back
+            Stencil
+            {
+                Ref [_RefValue]
+                Comp Always
+                Pass Replace
+            }
             HLSLPROGRAM
 
             #pragma multi_compile _ X_SHADOW_BIAS_CASTER_VERTEX
@@ -81,6 +92,7 @@
             Cull Back
             Blend SrcAlpha OneMinusSrcAlpha
 
+            
 
             HLSLPROGRAM
 
