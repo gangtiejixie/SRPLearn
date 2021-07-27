@@ -76,7 +76,7 @@ void ShadowCasterFragment(ShadowCasterVaryings input, out half4 color: SV_TARGET
 // mask = 1;
     // mask.g = dot(input.Normal.xyz, _XMainLightDirection.xyz);
     color = 0;
-    color.b = _ShadowMask;
+    color.r = _ShadowMask;
 }
 
 #endif

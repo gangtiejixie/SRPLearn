@@ -21,15 +21,17 @@ float SampleShadowPCF(float2 uv, float depth)
     float4 TempdepthColor = tex2D(_XMainShadowMapMask, uv) ;
     // return 1 - TempdepthColor.b;
     // float4 TempdepthColor = tex2Dlod(_XMainShadowMapMask, half4(uv, 0, 0));
-    float Tempdepth = DecodeFloatRG(TempdepthColor.ra);
+    // float Tempdepth = DecodeFloatRG(TempdepthColor.ra);
     float Tempdepth1 = DecodeFloatRG(TempdepthColor.gb);
     // return 1 - Tempdepth;
     // return Tempdepth1;
     // return TempdepthColor.b ;
+    // return TempdepthColor.r;
     float Tempdepth2 = _XMainShadowMap.Sample(sampler_XMainShadowMap_point_clamp, uv).r;
+
     float PCFShadow = _XMainShadowMap.SampleCmpLevelZero(sampler_XMainShadowMap, uv, depth);
-    //  return TempdepthColor.b;
-    return PCFShadow ;
+
+    return lerp(1, PCFShadow, TempdepthColor.r);
     float selfShadowmask = 0;
 #if UNITY_REVERSED_Z
     selfShadowmask = 1 - step(depth, Tempdepth2) ;
